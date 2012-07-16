@@ -6,7 +6,7 @@ Tails a file. it should work great. it will continue to work even if a file is u
 
 ## Example
 
-if you install globally you will get forwardho as a command it accepts options as arguments or reads them from the most local config.json
+if you install globally you will get forwardho as a command it accepts options as arguments or reads them from the most local forwardho.json
 
 ```sh
 $> forwardho
