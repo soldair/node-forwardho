@@ -135,8 +135,8 @@ _ext(ForwardHo.prototype,{
       this.backoff.backoff();
     }
   },
-  write:function(line){
-    line = this.format(line);
+  write:function(line,log){
+    line = this.format(line,log);
     if(this.connected) {
       //console.log('writing ',line.length,' bytes');
       this.connection.write(line);
