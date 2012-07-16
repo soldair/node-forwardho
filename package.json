@@ -3,7 +3,7 @@
   "name": "forwardho",
   "preferGlobal":true,
   "description": "forward log data from a bunch of watched log files over the network with a simple json protocol",
-  "version": "0.0.0",
+  "version": "0.0.",
   "main": "index.js",
   "bin":{
     "forwardho":"./bin/forwardho.js"
