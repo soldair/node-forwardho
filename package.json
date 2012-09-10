@@ -14,7 +14,7 @@
   "dependencies": {
     "confuse":"~0.0.0",
     "backoff":"~0.0.3",
-    "tailfd":"~0.0.1"
+    "tailfd":"~0.1.0"
   },
   "devDependencies": {
     "tap":"*"

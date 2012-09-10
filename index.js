@@ -1,6 +1,7 @@
 
 var fs = require('fs')
 , util = require('util')
+, path = require('path')
 , EventEmitter = require('events').EventEmitter
 , Backoff = require('backoff')
 , tailfd = require('tailfd').tail
@@ -10,6 +11,7 @@ module.exports = function(opts){
   var client = new ForwardHo(opts);
   client.connect();
   client.tail(opts.logs);
+  client.id = Date.now()+''+Math.random();
   return client;
 }
 
@@ -32,6 +34,7 @@ _ext(ForwardHo.prototype,{
     reconnectMaxInterval:30000,
     tailOptions:{}
   },
+  i:0,
   buffer:'',
   connection:false,
   connected:false,
@@ -49,15 +52,35 @@ _ext(ForwardHo.prototype,{
     if(!logs.forEach) return this.emit('error',new Error('logs to tail is not a string or array'));
 
     logs.forEach(function(log){
-      //todo make absolute path.
+      var o = z.options.tailOptions;
+      if(log.log){
+        o = _ext({},o);
+        _ext(o,log.options||{});
+        log = log.log;
+      }
+
+      log = path.resolve(__dirname,log);
+      
       if(z.tailers[log]) {
         return;
       }
+
       console.log('tailing ',log);
-      var tail = tailfd(log,z.options.tailOptions);
+
+      var tail = tailfd(log,o)
+      ,i = 0
+      ,lineId = null
+      ;
 
       tail.on('line',function(line,tailInfo){
-        z.write(line,log,tailInfo);
+        z.write(line,log,tailInfo,lineId);
+        if(lineId) lineId = null;
+      });
+
+      // if theline is too long just send it as a line but tag it with line id for later reassembly
+      tail.on('line-part',function(line,tailInfo){
+        lineId = z._id();
+        z.write(line,log,tailInfo,lineId);
       });
 
       z.tailers[log] = tail;
@@ -77,30 +100,37 @@ _ext(ForwardHo.prototype,{
       this.connection.on('connect',function(err,data){
         console.log('connected ',opts);
         if(z.buffer.length) {
-          console.log('flushing line buffer [',z.buffer.length,' bytes]');
-          z.connection.write(z.buffer,function(){
-            console.log('flushed!');
-            z.connected = true;
-          });
-          z.buffer = '';
+
+          console.log('sending line buffer [',z.buffer.length,' bytes]');
+          z.writeBuffer();
+          z.connected = true;
+
         } else {
           z.connected = true;
         }
+
+        z.resumeTails();
       });
 
       if(this.options.keepAlive) this.connection.setKeepAlive(this.options.keepAlive,this.options.keepAliveInterval);
 
       this.connection.on('end',function(){
+        z.pauseTails();
         console.log('connection was closed.')
         z.connected = false;
         z.reconnect();  
       });
 
       this.connection.on('error',function(err){
-          console.log('connection error. ',err.code,opts);
-          z.connected = false;
-          z.reconnect();
-      })
+        z.pauseTails();
+        console.log('connection error. ',err.code,opts);
+        z.connected = false;
+        z.reconnect();
+      });
+
+      this.connection.on('drain',function(){
+        z.resumeTails();
+      });
     } else {
       //reconnect!
       this.connection.connect(opts);
@@ -135,19 +165,75 @@ _ext(ForwardHo.prototype,{
       this.backoff.backoff();
     }
   },
-  write:function(line,log){
-    line = this.format(line,log);
-    if(this.connected) {
-      //console.log('writing ',line.length,' bytes');
-      this.connection.write(line);
-    }else this.bufferLine(line); 
+  pauseTails:function(){
+    var z = this;
+    z.pause = true;
+    Object.keys(z.tailers).forEach(function(k){
+      z.tailers[k].pause();
+    });
   },
-  format:function(line,log){
-    return JSON.stringify({time:Date.now(),line:line,file:log})+"\n";
+  resumeTails:function(){
+    var z = this;
+    z.paused = false;
+    Object.keys(z.tailers).forEach(function(k){
+      z.tailers[k].resume();
+    });   
   },
-  bufferLine:function(line){
+  write:function(line,log,tailInfo,id){
+    var z = this;
+    line = z.format(line,log,id);
+    if(z.connected) {
+      z._write(line,tailInfo);
+    } else {
+      this.pauseTails();
+      this.bufferLine(line,tailInfo);
+    }
+  },
+  _write:function(line,tailInfo){
+    var z = this;
+    // 
+    // just write it
+    //
+    line = line instanceof Buffer?line:new Buffer(line);
+
+    var result = this.connection.write(line,function(){
+      // i have successfully transfered these bytes...
+      z.commitLogPosition(tailInfo);
+      // if i dont have too much in memory get it going again.
+      if(!z.shouldPause()) z.resumeTails();
+    });
+
+    //
+    // support control of the max buffer size per socket
+    //
+    if(z.shouldPause()) {
+      z.pauseTails();
+    }
+              
+  },
+  shouldPause:function(){
+    return (this.options.maxSocketBufferSize||10240) < this.connection.bufferSize;
+  },
+  format:function(line,log,id){
+    var obj = {time:Date.now(),line:line,file:log};
+    if(id) obj.id = id;
+    return JSON.stringify(obj)+"\n";
+  },
+  bufferLine:function(line,tailInfo){
     console.log('buffering ',line.length,' bytes');
     this.buffer += line;
+  },
+  commitLogPosition:function(tailInfo,cb){
+
+    var inode = tailInfo.stat.ino
+    , linePos = tailInfo.linePos 
+    , logposdir = this.options.log_position_dir||'./'
+    ;
+    
+    fs.writeFile(logposdir+'logpos-'+inode,linePos,function(err,data){
+      if(err) console.log('error committing log position! ',err);
+      if(cb) cb(err,data);
+    });
   },
   close:function(){
     this.connection.destroy();
@@ -156,6 +242,9 @@ _ext(ForwardHo.prototype,{
     Object.keys(this.tailers).forEach(function(log){
       z.tailers[log].close();
     });    
+  },
+  _id:function(){
+    return this.id+''+(++i);
   }
 });
 
