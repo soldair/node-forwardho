@@ -3,7 +3,7 @@
   "name": "forwardho",
   "preferGlobal":true,
   "description": "forward log data from a bunch of watched log files over the network with a simple json protocol",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "main": "index.js",
   "bin":{
     "forwardho":"./bin/forwardho.js"
@@ -14,7 +14,9 @@
   "dependencies": {
     "confuse":"~0.0.0",
     "backoff":"~0.0.3",
-    "tailfd":"~0.1.0"
+    "mkdirp":"~0.3.4",
+    "valuefiles":"~0.0.2",
+    "tailfd":"~0.1.2"
   },
   "devDependencies": {
     "tap":"*"
