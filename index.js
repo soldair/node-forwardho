@@ -226,7 +226,7 @@ _ext(ForwardHo.prototype,{
     }
   },
   pauseTails:function(){
-    console.log('pausing tails!');
+    //console.log('pausing tails!');
     var z = this;
     z.paused = true;
     Object.keys(z.tailers).forEach(function(k){
@@ -236,7 +236,7 @@ _ext(ForwardHo.prototype,{
   resumeTails:function(){
     var z = this;
     if(!z.paused) return;
-    console.log('resuming tails!');
+    //console.log('resuming tails!');
 
     z.paused = false;
     Object.keys(z.tailers).forEach(function(k){
@@ -272,7 +272,7 @@ _ext(ForwardHo.prototype,{
     // support control of the max buffer size per socket
     //
     if(z.shouldPause()) {
-      console.log('i should pause so im pausing..');
+      //console.log('i should pause so im pausing..');
       z.pauseTails();
     }
               
