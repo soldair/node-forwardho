@@ -1,3 +1,5 @@
 config.json
 forwardho.json
 node_modules
+tmp.log
+logpos/
