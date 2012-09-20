@@ -159,7 +159,7 @@ _ext(ForwardHo.prototype,{
     var opts = {host:this.options.host,port:this.options.port};
     if(!this.connection) {
       this.connected = false;
-      this.connection = require('net').connect(opts)
+      this.connection = require('net').connect(opts.port,opts.host)
         
       this.connection.on('connect',function(err,data){
         //console.log('connected ',opts);
@@ -218,7 +218,7 @@ _ext(ForwardHo.prototype,{
       });
     } else {
       //reconnect!
-      this.connection.connect(opts);
+      this.connection.connect(opts.port,opts.host);
     } 
   },
   reconnect:function(){
