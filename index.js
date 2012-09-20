@@ -37,7 +37,7 @@ _ext(ForwardHo.prototype,{
     keepAliveInterval:10000,
     reconnectInitialTimeout:100,
     reconnectMaxInterval:30000,
-    tailPositionDir:__dirname+'/logpos',
+    tailPositionDir:'logpos',
     tailOptions:{}
   },
   i:0,
