@@ -67,7 +67,7 @@ _ext(ForwardHo.prototype,{
         log = log.log;
       }
 
-      log = path.resolve(__dirname,log);
+      log = path.resolve(z.options.dir||process.cwd(),log);
       
       if(z.tailers[log]) {
         return;
