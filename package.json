@@ -1,30 +1,32 @@
 {
-  "author": "Ryan Day <soldair@gmail.com>",
+  "author": {
+    "name": "Ryan Day",
+    "email": "soldair@gmail.com"
+  },
   "name": "forwardho",
-  "preferGlobal":true,
+  "preferGlobal": true,
   "description": "forward log data from a bunch of watched log files over the network with a simple json protocol",
   "version": "0.0.6",
   "main": "index.js",
-  "bin":{
-    "forwardho":"./bin/forwardho.js"
+  "bin": {
+    "forwardho": "./bin/forwardho.js"
   },
-  "scripts":{
-    "test":"./node_modules/tap/bin/tap.js ./test/*.js"
+  "scripts": {
+    "test": "./node_modules/tap/bin/tap.js ./test/*.js"
   },
   "dependencies": {
-    "confuse":"~0.0.0",
-    "backoff":"~0.0.3",
-    "mkdirp":"~0.3.4",
-    "valuefiles":"~0.0.2",
-    "tailfd":"~0.1.2",
-    "floody":"~0.0.1"
+    "confuse": "~0.0.0",
+    "backoff": "~0.0.3",
+    "mkdirp": "~0.3.4",
+    "valuefiles": "~0.0.2",
+    "tailfd": "~0.1.2",
+    "floody": "~0.0.1"
   },
   "devDependencies": {
-    "tap":"*",
-    "yunofast":"~0.0.1"
+    "tap": "*",
+    "yunofast": "~0.0.1"
   },
-  "optionalDependencies": {},
   "engines": {
     "node": ">=0.6.0"
-  }
+  },
 }
