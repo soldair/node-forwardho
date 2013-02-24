@@ -47,7 +47,6 @@ _ext(ForwardHo.prototype,{
   connected:false,
   tailers:{},
   tail:function(logs){
-    //console.log('tail');
     var z = this;
     if(!this.tailers) this.tailers = {};
     
@@ -58,6 +57,8 @@ _ext(ForwardHo.prototype,{
     }
 
     if(!logs.forEach) return this.emit('error',new Error('logs to tail is not a string or array'));
+
+    console.log('tailing logs ',logs);
 
     logs.forEach(function(log){
       var o = z.options.tailOptions;
@@ -87,13 +88,12 @@ _ext(ForwardHo.prototype,{
       if(err && err.code != 'ENOENT') {
         console.log('error statting log ',log,err);
       } else if(!err){
-        //console.log('no error ill read start position from the values file');
         return z.readLogPosition({stat:stat},function(err,pos){
           pos = pos||0;
           if(stat.size < pos) pos = 0;
-          o.start = pos;
+          o.start = +pos;
 
-          console.log('starting tail of '+log+' from position ',pos);
+          console.log('starting tail of '+log+' from position ',pos,' in inode ',stat.ino,' on ',Date()+'');
           createTail();
         });
       }
@@ -274,6 +274,8 @@ _ext(ForwardHo.prototype,{
   write:function(line,log,tailInfo,id){
 
     var z = this;
+    if(this.filter(line)) return;
+ 
     line = z.format(line,log,id);
     if(z.connected) {
       z._write(line,tailInfo);
@@ -341,23 +343,53 @@ _ext(ForwardHo.prototype,{
     });
   },
   readLogPosition:function(tailInfo,cb){
-    //console.log('read log pos');
     var z = this;
-    //console.log('read log position');
     z.checkLogPositionDir(function(){
-      //console.log('checked log dir ',arguments);
       z.valuefiles.get(tailInfo.stat.ino,function(err,data){
-        //console.log('read log pos for ',tailInfo.stat.ino,arguments);
         cb(err,data);
       });
     });
   },
   commitLogPosition:function(tailInfo,cb){
-
-    var z = this;
+    var z = this
     z.valuefiles.set(tailInfo.stat.ino,tailInfo.linePos,function(err,data){
       if(cb)cb(err,data);
     });
+  },
+  filter:function(line){
+    var z = this;
+    //
+    // the "nginxDate filter" filters lines that are older than the last processed line by a minute.
+    //
+    if(z.options.filter === 'nginxDate') {
+      var t = z.nginxDateToTime(line);
+      // if i cant parse it ill have to let it through.
+      if(isNaN(t)) return;
+
+      if(!z.lastLogTime) {
+        z.lastLogTime = -1;
+        z.valuefiles.get('lastLogTime',function(err,time){
+          time = time||0;
+          z.lastLogTime = time>t?time:t;
+        });
+      } else if(z.lastLogTime > -1) {
+        // filter this log row.
+        if(z.lastLogTime-60000 > t) return true;
+        if(z.lastLogTime < t) z.lastLogTime = t;
+        // no need to queue up many callbacks.
+        if(!z.valuefiles.writing['lastLogTime']){
+          z.valuefiles.set('lastLogTime',t,function(err){
+            if(err) console.log('error persisting lastLogTime',err,t);
+          });
+        }
+      }
+    }
+  },
+  // to ensure log data doesnt get resubmitted i have added a filter by date mechanism.
+  // [23/Feb/2013:08:26:46 -0500] is the nginx date format.
+  lastLogTime:0,
+  nginxDateToTime:function(date){
+    return (new Date(date.replace(/^.+?\[([^\[]+)\].+?$/,'$1').replace(':',' '))).getTime()
   },
   close:function(){
     this.connection.destroy();
