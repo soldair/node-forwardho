@@ -401,7 +401,7 @@ _ext(ForwardHo.prototype,{
     });    
   },
   _id:function(){
-    return this.id+''+(++i);
+    return this.id+''+(++this.i);
   }
 });
 
